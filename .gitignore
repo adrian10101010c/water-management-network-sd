@@ -8,11 +8,7 @@
 *.userosscache
 *.sln.docstates
 
-WaterManagementNetwork/.vs/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
+WaterManagementNetwork/.vs/*
 
 # Si usas Python
 __pycache__/
