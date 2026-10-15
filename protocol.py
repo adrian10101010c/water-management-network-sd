@@ -2,7 +2,7 @@ STX = b"\x02"
 ETX = b"\x03"
 ACK = b"\x06"
 NACK = b"\x15"
-SEP = b"\x1C"
+SEP = "#"
 
 def calcularLRC(data: bytes) -> bytes:
 	lrc = 0
@@ -26,4 +26,7 @@ def extraerMensaje(message: bytes) -> str | None:
 	LRC = message[etx_index+1:etx_index+2]
 	if calcularLRC(data) != LRC:
 		return None
-	return data.decode("utf-8")
+	try:
+		return data.decode("utf-8")
+	except UnicodeDecodeError:
+		return None

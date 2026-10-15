@@ -1,15 +1,4 @@
-﻿################################################################################
-# Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
-################################################################################
-
-.vs/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Si usas Python
-__pycache__/
+﻿__pycache__/
 *.pyc
 *.pyo
 
