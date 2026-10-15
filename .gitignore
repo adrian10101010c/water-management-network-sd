@@ -2,4 +2,15 @@
 # Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
 ################################################################################
 
-/WaterManagementNetwork/.vs/WaterManagementNetwork
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Si usas Python
+__pycache__/
+*.pyc
+*.pyo
+
+water_management.db
