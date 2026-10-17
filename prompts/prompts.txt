@@ -1,8 +1,9 @@
 protocol.py:
-- Como se calcula el LRC en python
+- Cómo se calcula el LRC en python
 
 database.py:
-- Como inicio una conexión con sqlite3 además de poder ejecutar las sentencias y poder pasar variables a estas en python
+- Cómo inicio una conexión con sqlite3 además de poder ejecutar las sentencias y poder pasar variables a estas en python
 
 wm_central.py:
-- Como configuro los hilos para que el proceso no se quede bloqueado al cerrarlo con ctrl+C y finalice inmediatamente?
+- Cómo configuro los hilos para que el proceso no se quede bloqueado al cerrarlo con ctrl+C y finalice inmediatamente?
+- Una vez establecida una conexión por sockets, cómo hago para que el programa quede a la espera de recibir bytes?
