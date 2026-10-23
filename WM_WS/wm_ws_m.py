@@ -14,10 +14,21 @@ class WM_WS_M:
 
         self.running = False
 
+        self.engine_socket = None
+
     def iniciar(self):
         self.running = True
         if self.conectar_central():
-            pass
+            print(f"[MONITOR] Estación activa. Manteniendo conexión con la central...")
+            try:
+                while self.running:
+                    time.sleep(1) 
+            except KeyboardInterrupt:
+                print("[MONITOR] Apagando monitor...")
+                self.running = False
+            finally:
+                if self.central_socket:
+                    self.central_socket.close()
     
 
     def conectar_central(self):
@@ -49,10 +60,17 @@ class WM_WS_M:
             
             if datos.startswith(protocol.ACK):
                 datos = datos[1:]
-            respuesta = protocol.extraerMensaje(datos)
-            print(f"[MONITOR] Respuesta de CENTRAL: {respuesta}")
-            return True
 
+            if len(datos) > 0:
+                respuesta = protocol.extraerMensaje(datos)
+                print(f"[MONITOR] Respuesta de CENTRAL: {respuesta}")
+            else:
+                datos_trama = self.central_socket.recv(1024)
+                respuesta = protocol.extraerMensaje(datos_trama)
+                print(f"[MONITOR] Respuesta de CENTRAL: {respuesta}")
+
+            return True
+        
         except Exception as e:
             print(f"[MONITOR] Error comunicando con CENTRAL: {e}")
             return False
