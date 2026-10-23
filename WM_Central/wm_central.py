@@ -78,8 +78,6 @@ class WM_Central:
                 database.actualizarEstado(ws_id, "DISCONNECTED")
                 print(f"[CENTRAL] Estación {ws_id} marcada como DISCONNECTED en la BD.")
             client_socket.close()
-            
-
         
     def procesar_mensaje(self, mensaje):
         partesMensaje = mensaje.split(protocol.SEP)
@@ -94,12 +92,12 @@ class WM_Central:
             ws_id = partesMensaje[1]
             database.actualizarEstado(ws_id, "LEAK")
             print(f"[CENTRAL] Fuga detectada en la estación {ws_id}. Estado -> LEAK")
-            return f"ACK_LEAK#{ws_id}", ws_id
+            return f"ACK_LEAK{protocol.SEP}{ws_id}", ws_id
         elif comando == "OK" and len(partesMensaje) >= 2:
             ws_id = partesMensaje[1]
             database.actualizarEstado(ws_id, "AVAILABLE")
             print(f"[CENTRAL] Avería resuelta en la estación {ws_id}. Estado -> AVAILABLE")
-            return f"ACK_OK#{ws_id}", ws_id
+            return f"ACK_OK{protocol.SEP}{ws_id}", ws_id
         else:
             print(f"[CENTRAL] Comando desconocido o incompleto: {mensaje}")
             return "ERROR#COMANDO_DESCONOCIDO", None
@@ -107,22 +105,53 @@ class WM_Central:
     def manejar_registro(self, ws_id: str, location: str):
         database.registrarEstacion(ws_id, location)
         print(f"[CENTRAL] Estación '{ws_id}' ({location}) registrada y disponible.")
-        return f"REG_OK#{ws_id}"
+        return f"REG_OK{protocol.SEP}{ws_id}"
 
-    def manejar_peticion_riego(self):
-        pass
+    def manejar_peticion_riego(self, operator_id: str, ws_id: str, duracion: int):
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            motivo = f"Estación {ws_id} no encontrada."
+            print(f"[CENTRAL] {motivo}")
+            return False, motivo
+        estado_actual = estacion[2]    
+        if estado_actual != "AVAILABLE":
+            motivo = f"La estación '{ws_id}' no está disponible. Estado actual: {estado_actual}"
+            print(f"[CENTRAL] Riego denegado a {operator_id}: {motivo}")
+            return False, motivo
+        database.iniciarRiegoEstacion(ws_id, operator_id)
+        print(f"[CENTRAL] Riego autorizado para {operator_id} en {ws_id} durante {duracion} segundos.")
+        self.enviar_orden_a_estacion(ws_id, "START", duracion)
+        return True, f"Riego iniciado en {ws_id} con éxito."
 
-    def enviar_orden_a_estacion(self):
-        pass
+    def enviar_orden_a_estacion(self, ws_id: str, orden: str, **kafkaargs):
+        print(f"[CENTRAL -> KAFKA] Enviando orden a [{ws_id}]: Accion: {orden}, Parametros: {kafkaargs}")
 
-    def forzar_inicio_riego(self):
-        pass
+    def forzar_inicio_riego(self, ws_id: str, operator_id: str, duracion: int = 60):
+        print(f"[CENTRAL] Orden administrativa: Forzar inicio de riego en {ws_id}")
+        exito, respuesta = self.manejar_peticion_riego("CENTRAL_ADMIN", ws_id, duracion)
+        return exito, respuesta
 
-    def forzar_bloqueo_estacion(self):
-        pass
+    def forzar_bloqueo_estacion(self, ws_id: str):
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            motivo = f"Estación {ws_id} no encontrada."
+            print(f"[CENTRAL] {motivo}")
+            return False, motivo
+        database.finalizarRiegoEstacion(ws_id, status="OUT_OF_SERVICE")
+        print(f"[CENTRAL] Estación {ws_id} bloqueada (Estado -> 'OUT_OF_SERVICE'.)")
+        self.enviar_orden_a_estacion(ws_id, "STOP")
+        return True
 
-    def forzar_activación_estacion(self):
-        pass
+    def forzar_activación_estacion(self, ws_id: str):
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            motivo = f"Estación {ws_id} no encontrada."
+            print(f"[CENTRAL] {motivo}")
+            return False, motivo
+        database.actualizarEstado(ws_id, "AVAILABLE")
+        print(f"[CENTRAL] Estación {ws_id} reactivada (Estado -> 'AVAILABLE')")
+        self.enviar_orden_a_estacion(ws_id, "ACTIVATE")
+        return True
 
 def main():
         if len(sys.argv) < 3:
