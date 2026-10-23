@@ -67,7 +67,7 @@ def main():
         central_port = int(central_port)
         central_address = (central_ip, central_port)
 
-        location = sys.argv[5]
+        location = sys.argv[4]
         
         monitor = WM_WS_M(engine_port, central_address, ws_id, location)
         monitor.iniciar()
