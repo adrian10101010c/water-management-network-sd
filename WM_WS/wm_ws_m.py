@@ -13,7 +13,7 @@ class WM_WS_M:
         self.central_socket = None
         self.running = False
         self.server_socket = None
-
+        self.estado_anterior = "OK"
 
     def iniciar(self):
         self.running = True
@@ -92,7 +92,6 @@ class WM_WS_M:
     def manejar_engine(self, client_socket, addr):
         client_socket.settimeout(1.0)
         try:
-            estado_anterior = "OK"
             while self.running:
                 msg = protocol.empaquetarCadena("CHECK_HEALTH")
                 client_socket.sendall(msg)
@@ -113,14 +112,14 @@ class WM_WS_M:
                     client_socket.sendall(protocol.NACK)
                     continue
 
-                if respuesta == "KO" and estado_anterior != "KO":
+                if respuesta == "KO" and self.estado_anterior != "KO":
                     print("[MONITOR] Avería (KO) detectada. Notificando a CENTRAL...")
                     self.enviar_a_central(f"LEAK#{self.ws_id}")
-                    estado_anterior = "KO"
-                elif respuesta == "OK" and estado_anterior == "KO":
+                    self.estado_anterior = "KO"
+                elif respuesta == "OK" and self.estado_anterior == "KO":
                     print("[MONITOR] Avería resuelta. Notificando a CENTRAL...")
                     self.enviar_a_central(f"OK#{self.ws_id}")
-                    estado_anterior = "OK"              
+                    self.estado_anterior = "OK"              
         
                 time.sleep(1)
         
@@ -132,6 +131,7 @@ class WM_WS_M:
             client_socket.close()
             print("[MONITOR] Conexión cerrada. Notificando fuga a CENTRAL...")
             self.enviar_a_central(f"LEAK#{self.ws_id}")
+            self.estado_anterior = "KO"
 
 
   

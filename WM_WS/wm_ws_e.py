@@ -11,6 +11,7 @@ class WM_WS_E:
         self.client_socket = None
         self.running = False
         self.estado = "OK"
+        
     def iniciar(self):
         self.running = True
         if self.conectar_monitor():
@@ -28,7 +29,7 @@ class WM_WS_E:
             finally:
                 if self.client_socket:
                     self.client_socket.close()
-     
+        
     def conectar_monitor(self):
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,6 +39,7 @@ class WM_WS_E:
         except ConnectionRefusedError:
             print(f"[ENGINE] Error: Monitor no disponible en {self.monitor_address}")
             return False
+        
     def escuchar_monitor(self):
         try:
             while self.running:
@@ -63,7 +65,7 @@ class WM_WS_E:
                     print("\n[ENGINE] ¡Avería detectada!")
                 else:
                     self.estado = "OK"
-                    print("\n[ENGINE] Avería reparada")
+                    print("\n[ENGINE] Avería reparada.")
             except EOFError:
                 break
 def main():
