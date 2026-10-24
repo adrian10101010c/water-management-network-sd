@@ -1,6 +1,7 @@
 import sys
 import socket
 import time
+import threading
 import protocol
 
 class WM_WS_M:
@@ -9,26 +10,26 @@ class WM_WS_M:
         self.central_address = central_address
         self.ws_id = ws_id
         self.location = location
-
         self.central_socket = None
-
         self.running = False
+        self.server_socket = None
 
-        self.engine_socket = None
 
     def iniciar(self):
         self.running = True
         if self.conectar_central():
             print(f"[MONITOR] Estación activa. Manteniendo conexión con la central...")
+            client_thread = threading.Thread(target=self.escuchar_sockets_engine, daemon=True)
+            client_thread.start()
             try:
                 while self.running:
-                    time.sleep(1) 
+                    time.sleep(1)
             except KeyboardInterrupt:
-                print("[MONITOR] Apagando monitor...")
+                print("[CENTRAL] Apagando servidor central...")
                 self.running = False
             finally:
-                if self.central_socket:
-                    self.central_socket.close()
+                if self.server_socket:
+                    self.server_socket.close()
     
 
     def conectar_central(self):
@@ -74,6 +75,55 @@ class WM_WS_M:
         except Exception as e:
             print(f"[MONITOR] Error comunicando con CENTRAL: {e}")
             return False
+
+    def escuchar_sockets_engine(self):
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_socket.bind(('', self.engine_port))
+            self.server_socket.listen(20)
+            print(f"[MONITOR] Escuchando conexiones en el puerto {self.engine_port}...")
+            while self.running:
+                try:
+                    client_socket, addr = self.server_socket.accept()
+                    print(f"[MONITOR] Conexión entrante desde {addr}")
+                    self.manejar_engine(client_socket, addr)
+                except Exception as e:
+                    print(f"[MONITOR] Error al aceptar conexión: {e}")
+                
+    def manejar_engine(self, client_socket, addr):
+        try:
+            while self.running:
+                datos = client_socket.recv(1024)
+                if not datos:
+                    print(f"[MONITOR] El engine {addr} se ha desconectado.")
+                    break
+        
+                mensaje = protocol.extraerMensaje(datos)
+                if mensaje is None:
+                    print(f"[MONITOR] Mensaje corrupto (LRC inválido) desde {addr}. Enviando NACK.")
+                    client_socket.sendall(protocol.NACK)
+                    continue
+        
+                client_socket.sendall(protocol.ACK)
+                print(f"[MONITOR] Mensaje recibido de {addr}: {mensaje}")
+        
+                respuesta = self.procesar_mensaje(mensaje)
+               
+        
+                if respuesta:
+                    trama_respuesta = protocol.empaquetarCadena(respuesta)
+                    client_socket.sendall(trama_respuesta)
+        
+        except ConnectionResetError:
+            print(f"[MONITOR] Conexión perdida con {addr}.")
+        except Exception as e:
+            print(f"[MONITOR] Error con el engine {addr}: {e}")
+        finally:
+            client_socket.close()
+
+
+    def procesar_mensaje(self):
+        pass
+
     
 def main():
     if  (len(sys.argv) == 5):
