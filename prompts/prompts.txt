@@ -10,3 +10,6 @@ wm_central.py:
 
 wm_monitor.py:
 - Cómo establezco un timeout para un socket?
+
+wm_engine.py:
+- Dónde debería crear el hilo para escuchar al monitor y para el teclado?
