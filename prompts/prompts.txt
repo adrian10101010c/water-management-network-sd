@@ -7,3 +7,6 @@ database.py:
 wm_central.py:
 - Cómo configuro los hilos para que el proceso no se quede bloqueado al cerrarlo con ctrl+C y finalice inmediatamente?
 - Una vez establecida una conexión por sockets, cómo hago para que el programa quede a la espera de recibir bytes?
+
+wm_monitor.py:
+- Cómo establezco un timeout para un socket?

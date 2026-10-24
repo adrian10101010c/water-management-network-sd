@@ -90,28 +90,39 @@ class WM_WS_M:
                     print(f"[MONITOR] Error al aceptar conexión: {e}")
                 
     def manejar_engine(self, client_socket, addr):
+        client_socket.settimeout(1.0)
         try:
+            estado_anterior = "OK"
             while self.running:
-                datos = client_socket.recv(1024)
+                msg = protocol.empaquetarCadena("CHECK_HEALTH")
+                client_socket.sendall(msg)
+
+                try:
+                    datos = client_socket.recv(1024)
+                except socket.timeout:
+                    print(f"[MONITOR] Timeout esperando al engine {addr}.")
+                    break
+
                 if not datos:
                     print(f"[MONITOR] El engine {addr} se ha desconectado.")
                     break
         
-                mensaje = protocol.extraerMensaje(datos)
-                if mensaje is None:
+                respuesta = protocol.extraerMensaje(datos)
+                if respuesta is None:
                     print(f"[MONITOR] Mensaje corrupto (LRC inválido) desde {addr}. Enviando NACK.")
                     client_socket.sendall(protocol.NACK)
                     continue
+
+                if respuesta == "KO" and estado_anterior != "KO":
+                    print("[MONITOR] Avería (KO) detectada. Notificando a CENTRAL...")
+                    self.enviar_a_central(f"LEAK#{self.ws_id}")
+                    estado_anterior = "KO"
+                elif respuesta == "OK" and estado_anterior == "KO":
+                    print("[MONITOR] Avería resuelta. Notificando a CENTRAL...")
+                    self.enviar_a_central(f"OK#{self.ws_id}")
+                    estado_anterior = "OK"              
         
-                client_socket.sendall(protocol.ACK)
-                print(f"[MONITOR] Mensaje recibido de {addr}: {mensaje}")
-        
-                respuesta = self.procesar_mensaje(mensaje)
-               
-        
-                if respuesta:
-                    trama_respuesta = protocol.empaquetarCadena(respuesta)
-                    client_socket.sendall(trama_respuesta)
+                time.sleep(1)
         
         except ConnectionResetError:
             print(f"[MONITOR] Conexión perdida con {addr}.")
@@ -119,11 +130,13 @@ class WM_WS_M:
             print(f"[MONITOR] Error con el engine {addr}: {e}")
         finally:
             client_socket.close()
+            print("[MONITOR] Conexión cerrada. Notificando fuga a CENTRAL...")
+            self.enviar_a_central(f"LEAK#{self.ws_id}")
 
 
-    def procesar_mensaje(self):
-        pass
+  
 
+    
     
 def main():
     if  (len(sys.argv) == 5):
