@@ -30,6 +30,9 @@ class WM_WS_E:
             sys.exit(1)
 
         threading.Thread(target=self.capturar_teclado, daemon=True).start()
+        threading.Thread(target=self.consumir_ordenes, daemon=True).start()
+        threading.Thread(target=self.bucle_telemetria, daemon=True).start()
+        print(f"[ENGINE {self.ws_id}] Iniciado. Pulsa ENTER para alternar OK/KO")
         while self.running:
             if self.conectar_monitor():
                 print(f"[ENGINE {self.ws_id}] Conectado al Monitor. Esperando chequeos de salud...")
@@ -167,7 +170,7 @@ def main():
     else:
         print("Uso: python wm_ws_e.py <ip:puerto_broker> <ip:puerto_monitor> <ws_id>")
         sys.exit(1)
-        
+
     engine = WM_WS_E(broker_address, monitor_address)
     engine.iniciar()
 
