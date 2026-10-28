@@ -8,7 +8,7 @@ def iniciarBD():
         CREATE TABLE IF NOT EXISTS watering_stations (
             id TEXT PRIMARY KEY,
             location TEXT NOT NULL,
-            status TEXT NOT NULL,
+            status TEXT NOT NULL, 
             flow REAL DEFAULT 0.0,
             accumulated_volume INTEGER DEFAULT 0,
             operator TEXT
@@ -115,7 +115,7 @@ def iniciarRiegoEstacion(ws_id: str, operator_id: str, initial_flow: float = 10.
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE watering_stations
-            SET status = 'WATERING', current_operator = ?, flow = ?
+            SET status = 'WATERING', operator = ?, flow = ?
             WHERE id = ?
         ''', (operator_id, initial_flow, ws_id))
         conn.commit()
@@ -132,7 +132,7 @@ def finalizarRiegoEstacion(ws_id: str, status: str = "AVAILABLE"):
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE watering_stations
-            SET status = ?, flow = 0.0, current_operator = NULL
+            SET status = ?, flow = 0.0, operator = NULL
             WHERE id = ?
         ''', (status, ws_id))
         conn.commit()

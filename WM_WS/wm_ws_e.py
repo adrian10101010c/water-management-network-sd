@@ -36,7 +36,7 @@ class WM_WS_E:
             client.connect(self.monitor_address)
             self.client_socket = client
             return True
-        except ConnectionRefusedError:
+        except (ConnectionRefusedError, socket.error):
             print(f"[ENGINE] Error: Monitor no disponible en {self.monitor_address}")
             return False
         
@@ -52,9 +52,15 @@ class WM_WS_E:
                 if mensaje == "CHECK_HEALTH":
                     respuesta = protocol.empaquetarCadena(self.estado)
                     self.client_socket.sendall(respuesta)
+        except (ConnectionResetError, BrokenPipeError):
+            print("[ENGINE] Conexión perdida con el Monitor.")
         except Exception as e:
             if self.running:
                 print(f"[ENGINE] Error comunicando con Monitor: {e}")
+        finally:
+            if self.client_socket:
+                self.client_socket.close()
+            self.client_socket = None
 
     def capturar_teclado(self):
         while self.running:

@@ -30,6 +30,7 @@ class WM_Central:
 
     def escuchar_sockets(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind(('', self.socket_port))
         self.server_socket.listen(20)
         print(f"[CENTRAL] Escuchando conexiones en el puerto {self.socket_port}...")
