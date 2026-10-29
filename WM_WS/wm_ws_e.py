@@ -171,7 +171,7 @@ def main():
         print("Uso: python wm_ws_e.py <ip:puerto_broker> <ip:puerto_monitor> <ws_id>")
         sys.exit(1)
 
-    engine = WM_WS_E(broker_address, monitor_address)
+    engine = WM_WS_E(broker_address, monitor_address, ws_id)
     engine.iniciar()
 
 if __name__ == "__main__": 
