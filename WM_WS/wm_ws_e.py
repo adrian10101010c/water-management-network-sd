@@ -92,7 +92,7 @@ class WM_WS_E:
             'auto.offset.reset': 'latest',
             'enable.auto.commit': True
         })
-        consumer.suscribe(['wm-orders'])
+        consumer.subscribe(['wm-orders'])
         try:
             while self.running:
                 msg = consumer.poll(timeout=1.0)
@@ -146,27 +146,20 @@ class WM_WS_E:
                     "operator_id": self.operator
                 }
                 if self.producer:
-                    self.producer.produce('vm-telemetry', value=json.dumps(telemetria).encode('utf-8'), callback=self.delivery_report)
+                    self.producer.produce('wm-telemetry', value=json.dumps(telemetria).encode('utf-8'), callback=self.delivery_report)
                     self.producer.poll(0)
                     print(f"[TELEMETRIA] Regando... Caudal: {self.flow_minutos}L/min | Acumulado: {telemetria['accumulated_volume']}L")
             time.sleep(1)
         
 
 def main():
-    if  (len(sys.argv) == 4):
-        broker_address = sys.argv[1]
+    if len(sys.argv) == 4:
+        broker_address = sys.argv[1]  
         monitor_address = sys.argv[2]
-
-        broker_ip, broker_port = broker_address.split(":")
-        broker_port = int(broker_port)
-        broker_address = (broker_ip, broker_port)
-
         monitor_ip, monitor_port = monitor_address.split(":")
-        monitor_port = int(monitor_port)
-        monitor_address = (monitor_ip, monitor_port)
+        monitor_address = (monitor_ip, int(monitor_port))
 
         ws_id = sys.argv[3]
-
     else:
         print("Uso: python wm_ws_e.py <ip:puerto_broker> <ip:puerto_monitor> <ws_id>")
         sys.exit(1)

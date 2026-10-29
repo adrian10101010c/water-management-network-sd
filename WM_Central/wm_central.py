@@ -130,7 +130,7 @@ class WM_Central:
             'auto.offset.reset': 'latest',
             'enable.auto.commit': True
         })
-        consumer.subscribe(['vm-requests'])
+        consumer.subscribe(['wm-requests'])
         try:
             while self.running:
                 msg = consumer.poll(timeout=1.0)
@@ -159,7 +159,7 @@ class WM_Central:
             'auto.offset.reset': 'latest',
             'enable.auto.commit': True
         })
-        consumer.subscribe(['vm-telemetry'])
+        consumer.subscribe(['wm-telemetry'])
         try:
             while self.running:
                 msg = consumer.poll(timeout=1.0)
