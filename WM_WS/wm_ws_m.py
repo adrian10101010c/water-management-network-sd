@@ -17,36 +17,41 @@ class WM_WS_M:
 
     def iniciar(self):
         self.running = True
-        if self.conectar_central():
-            print(f"[MONITOR] Estación activa. Manteniendo conexión con la central...")
-            client_thread = threading.Thread(target=self.escuchar_sockets_engine, daemon=True)
-            client_thread.start()
-            try:
-                while self.running:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                print("[CENTRAL] Apagando servidor central...")
-                self.running = False
-            finally:
-                if self.server_socket:
-                    self.server_socket.close()
+        threading.Thread(target=self.mantener_conexion_central, daemon=True).start()
+        threading.Thread(target=self.escuchar_sockets_engine, daemon=True).start()
+        print(f"[MONITOR {self.ws_id}] Iniciado. Presiona Ctrl+C para salir.")
+        try:
+            while self.running:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print(f"[MONITOR {self.ws_id}] Apagando monitor...")
+            self.running = False
+        finally:
+            if self.server_socket:
+                self.server_socket.close()
+            if self.central_socket:
+                self.central_socket.close()
     
 
-    def conectar_central(self):
-        try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(self.central_address)
-            self.central_socket = client
-
-
-            msg = f"REG#{self.ws_id}#{self.location}"
-            if self.enviar_a_central(msg):
-                print(f"[MONITOR] Registrado con éxito en CENTRAL {self.central_address}")
-                return True
-            return False
-
-        except ConnectionRefusedError:
-            print(f"[MONITOR] Error: Central no disponible")
+    def mantener_conexion_central(self):
+        while self.running:
+            if not self.central_socket:
+                try:
+                    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    client.connect(self.central_address)
+                    self.central_socket = client
+                    msg = f"REG#{self.ws_id}#{self.location}"
+                    if self.enviar_a_central(msg):
+                        print(f"[MONITOR] Registrado con éxito en CENTRAL {self.central_address}")
+                    else:
+                        self.central_socket.close()
+                        self.central_socket = None
+                except (ConnectionRefusedError, socket.error):
+                    print(f"[MONITOR {self.ws_id}] Imposible conectar con WM_Central en {self.central_address}. Reintentando en 3s...")
+                    self.central_socket = None
+                    time.sleep(5)
+            else:
+                time.sleep(2)
 
     def enviar_a_central(self, msg: str) -> bool:
         try:
@@ -78,6 +83,7 @@ class WM_WS_M:
 
     def escuchar_sockets_engine(self):
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket.bind(('', self.engine_port))
             self.server_socket.listen(20)
             print(f"[MONITOR] Escuchando conexiones en el puerto {self.engine_port}...")
@@ -132,14 +138,9 @@ class WM_WS_M:
             print("[MONITOR] Conexión cerrada. Notificando fuga a CENTRAL...")
             self.enviar_a_central(f"LEAK#{self.ws_id}")
             self.estado_anterior = "KO"
-
-
-  
-
-    
     
 def main():
-    if  (len(sys.argv) == 5):
+    if (len(sys.argv) == 5):
         engine_port = int(sys.argv[1])
         central_address = sys.argv[2]
         ws_id = sys.argv[3]
