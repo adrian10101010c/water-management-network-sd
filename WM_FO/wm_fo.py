@@ -55,7 +55,7 @@ class WM_FO:
                 else:
                     datos = json.loads(msg.value().decode('utf-8'))
                     topic = msg.topic()
-                    if topic == 'vm-responses':
+                    if topic == 'wm-responses':
                         if datos.get("operator_id") == self.operator_id:
                             estado = datos.get("status")
                             mensaje = datos.get("msg")
@@ -85,10 +85,11 @@ class WM_FO:
                 self.imprimir_menu()
                 opcion = input().strip()
                 if opcion == "1":
-                    ws_id = ("Introduce el ID de la estación (ej. WS-01): ").strip()
+                    ws_id = input("Introduce el ID de la estación (ej. WS-01): ").strip()
                     duracion_str = input("Introduce la duración en segundos: ").strip()
                     if duracion_str.isdigit():
                         duracion = int(duracion_str)
+                        self.solicitar_riego(ws_id, duracion)  
                     else:
                         print("Duración invalida. Debe ser un numero.")
                 elif opcion == "2":
@@ -109,7 +110,7 @@ class WM_FO:
             "ws_id": ws_id,
             "duration": duracion
         }
-        self.producer.produce('vm-requests', value=json.dumps(peticion).encode('utf-8'), callback=self.delivery_report)
+        self.producer.produce('wm-requests', value=json.dumps(peticion).encode('utf-8'), callback=self.delivery_report)
         self.producer.poll(0)
         print(f"[OPERARIO] Petición enviada a Central. Esperando validación...")
 
