@@ -84,7 +84,7 @@ class WM_WS_E:
                     print("\n[ENGINE] Avería reparada.")
             except EOFError:
                 break
-
+    
     def consumir_ordenes(self):
         consumer = Consumer({
             'bootstrap.servers': self.broker_address,
@@ -110,10 +110,14 @@ class WM_WS_E:
                         continue
                     orden = datos.get("order")
                     print(f"[ENGINE {self.ws_id}] Orden Kafka recibida: {orden}")
+            
                     if orden == "START" and self.estado == "OK":
                         self.is_watering = True
                         self.operator = datos.get("operator_id")
-                        print(f"[ENGINE {self.ws_id}] Abriendo válvula. Riego iniciado.")
+                        duracion = datos.get("duration", 60)
+                        print(f"[ENGINE {self.ws_id}] Abriendo válvula. Riego iniciado por {duracion} segundos.")
+                
+                        threading.Thread(target=self.temporizador_riego, args=(duracion,), daemon=True).start()
                     elif orden == "STOP":
                         self.detener_riego()
                         pass
@@ -122,11 +126,29 @@ class WM_WS_E:
         finally:
             consumer.close()
 
+    def temporizador_riego(self, duration):
+            time.sleep(duration + 0.1) 
+            if self.is_watering:
+                self.detener_riego()
+                print(f"[ENGINE {self.ws_id}] Tiempo de riego de {duration}s finalizado automáticamente.")
+
     def detener_riego(self):
         if self.is_watering:
             self.is_watering = False
-            self.operator = None
             print(f"[ENGINE {self.ws_id}] Cerrando válvula. Riego detenido.")
+            
+            if self.producer:
+                notificacion = {
+                    "action": "STOP",
+                    "ws_id": self.ws_id,
+                    "operator_id": self.operator,
+                    "accumulated_volume": self.acummulated_volume
+                }
+                self.producer.produce('wm-requests', value=json.dumps(notificacion).encode('utf-8'), callback=self.delivery_report)
+                self.producer.flush() 
+                
+            self.operator = None
+            self.acummulated_volume = 0.0
 
     def delivery_report(self, err, msg):
         if err is not None:
