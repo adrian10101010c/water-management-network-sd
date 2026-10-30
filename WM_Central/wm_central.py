@@ -117,7 +117,7 @@ class WM_Central:
             print(f"[CENTRAL] Error conectando Productor Kafka: {e}")
             sys.exit(1)
 
-    def delivery_report(err, msg):
+    def delivery_report(self, err, msg):
         if err is not None:
             print(f"Message delivery failed: {err}")
         else:
@@ -138,17 +138,34 @@ class WM_Central:
                     continue
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
-                        # End of partition reached
                         print('End of partition reached {0}/{1}'.format(msg.topic(), msg.partition()))
                     elif msg.error():
                         raise KafkaException(msg.error())
                 else:
                     datos = json.loads(msg.value().decode('utf-8'))
-                    operator_id = datos.get("operator_id")
+                    accion = datos.get("action", "REQUEST")
                     ws_id = datos.get("ws_id")
-                    duracion = datos.get("duration", 60)
-                    print(f"\n[CENTRAL] Petición recibida: {operator_id} -> {ws_id} ({duracion}s)")
-                    self.manejar_peticion_riego(operator_id, ws_id, duracion)
+                    operator_id = datos.get("operator_id")
+                    
+                    if accion == "REQUEST":
+                        duracion = datos.get("duration", 60)
+                        print(f"\n[CENTRAL] Petición recibida: {operator_id} -> {ws_id} ({duracion}s)")
+                        self.manejar_peticion_riego(operator_id, ws_id, duracion)
+                        
+                    elif accion == "STOP":
+                        volumen = datos.get("accumulated_volume", 0)
+                        database.finalizarRiegoEstacion(ws_id) 
+                        print(f"\n[CENTRAL] Riego finalizado en {ws_id}. Volumen total: {volumen}L")
+                        
+                        resumen = {
+                            "operator_id": operator_id,
+                            "ws_id": ws_id,
+                            "status": "FINISHED",
+                            "msg": f"Riego completado. Volumen consumido: {volumen}L"
+                        }
+                        if self.producer:
+                            self.producer.produce('wm-responses', value=json.dumps(resumen).encode('utf-8'), callback=self.delivery_report)
+                            self.producer.poll(0)
         finally:
             consumer.close()
 
