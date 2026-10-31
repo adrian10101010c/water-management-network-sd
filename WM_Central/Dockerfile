@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /app/WM_Central
 
 RUN pip install --no-cache-dir confluent-kafka flask
 
