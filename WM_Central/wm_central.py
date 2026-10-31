@@ -183,14 +183,22 @@ class WM_Central:
                         
                     elif accion == "STOP":
                         volumen = datos.get("accumulated_volume", 0)
+                        reason = datos.get("reason", "COMPLETED")
+
                         database.finalizarRiegoEstacion(ws_id) 
-                        print(f"\n[CENTRAL] Riego finalizado en {ws_id}. Volumen total: {volumen}L")
-                        
+
+                        if reason == "LEAK":
+                            msg_fo = f"ALERTA: Riego ABORTADO por fuga en la estación {ws_id}. Volumen: {volumen}L"
+                            print(f"\n[CENTRAL] Riego ABORTADO en {ws_id} por FUGA. Volumen total: {volumen}L")
+                        else:
+                            msg_fo = f"Riego completado. Volumen consumido: {volumen}L"
+                            print(f"\n[CENTRAL] Riego finalizado en {ws_id}. Volumen total: {volumen}L")
+
                         resumen = {
                             "operator_id": operator_id,
                             "ws_id": ws_id,
                             "status": "FINISHED",
-                            "msg": f"Riego completado. Volumen consumido: {volumen}L"
+                            "msg": msg_fo
                         }
                         if self.producer:
                             self.producer.produce('wm-responses', value=json.dumps(resumen).encode('utf-8'), callback=self.delivery_report)

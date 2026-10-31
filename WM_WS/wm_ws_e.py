@@ -87,6 +87,8 @@ class WM_WS_E:
                     if self.estado == "OK":
                         self.estado = "KO"
                         print("\n[ENGINE] ¡Avería detectada!")
+                        if self.is_watering:
+                            self.detener_riego(reason="LEAK")
                     else:
                         self.estado = "OK"
                         print("\n[ENGINE] Avería reparada.")
@@ -140,21 +142,22 @@ class WM_WS_E:
                 self.detener_riego()
                 print(f"[ENGINE {self.ws_id}] Tiempo de riego de {duration}s finalizado automáticamente.")
 
-    def detener_riego(self):
+    def detener_riego(self, reason="COMPLETED"):
         if self.is_watering:
             self.is_watering = False
-            print(f"[ENGINE {self.ws_id}] Cerrando válvula. Riego detenido.")
-            
+            print(f"[ENGINE {self.ws_id}] Cerrando válvula. Riego detenido (Motivo: {reason}).")
+
             if self.producer:
                 notificacion = {
                     "action": "STOP",
                     "ws_id": self.ws_id,
                     "operator_id": self.operator,
-                    "accumulated_volume": self.acummulated_volume
+                    "accumulated_volume": self.acummulated_volume,
+                    "reason": reason  
                 }
                 self.producer.produce('wm-requests', value=json.dumps(notificacion).encode('utf-8'), callback=self.delivery_report)
                 self.producer.flush() 
-                
+
             self.operator = None
             self.acummulated_volume = 0.0
 
