@@ -22,16 +22,17 @@ services:
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       CLUSTER_ID: "gTBb85_WRXu6oQgq-brTQw"
 
-central:
-    build:
-      context: ./WM_Central
-      dockerfile: Dockerfile
-    container_name: wm_central
-    depends_on:
-      - broker
-    ports:
-      - "5000:5000"
-    environment:
-      SOCKET_PORT: 5000
-      BROKER_ADDRESS: "broker:29092"
-    restart: unless-stopped
+  central:
+      build:
+        context: ./WM_Central
+        dockerfile: Dockerfile
+      container_name: wm_central
+      depends_on:
+        - broker
+      ports:
+        - "5000:5000"
+        - "8080:8080"
+      environment:
+        SOCKET_PORT: 5000
+        BROKER_ADDRESS: "broker:29092"
+      restart: unless-stopped

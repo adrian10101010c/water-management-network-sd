@@ -13,7 +13,7 @@ class WM_WS_M:
         self.central_socket = None
         self.running = False
         self.server_socket = None
-        self.estado_anterior = "OK"
+        self.estado_anterior = "KO"
 
     def iniciar(self):
         self.running = True
@@ -43,6 +43,8 @@ class WM_WS_M:
                     msg = f"REG#{self.ws_id}#{self.location}"
                     if self.enviar_a_central(msg):
                         print(f"[MONITOR] Registrado con éxito en CENTRAL {self.central_address}")
+                        if self.estado_anterior == "KO":
+                            self.enviar_a_central(f"LEAK#{self.ws_id}")
                     else:
                         self.central_socket.close()
                         self.central_socket = None
