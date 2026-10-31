@@ -115,7 +115,7 @@ class WM_FO:
             "duration": duracion
         }
         self.producer.produce('wm-requests', value=json.dumps(peticion).encode('utf-8'), callback=self.delivery_report)
-        self.producer.poll(0)
+        self.producer.flush()
         print(f"[OPERARIO] Petición enviada a Central. Esperando validación...")
 
 def main():

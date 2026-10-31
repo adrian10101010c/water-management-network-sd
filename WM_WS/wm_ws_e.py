@@ -32,7 +32,7 @@ class WM_WS_E:
         threading.Thread(target=self.capturar_teclado, daemon=True).start()
         threading.Thread(target=self.consumir_ordenes, daemon=True).start()
         threading.Thread(target=self.bucle_telemetria, daemon=True).start()
-        print(f"[ENGINE {self.ws_id}] Iniciado. Pulsa ENTER para alternar OK/KO")
+        print(f"[ENGINE {self.ws_id}] Iniciado. Escribe L para alternar OK/KO")
         while self.running:
             try:
                 if self.conectar_monitor():
@@ -82,13 +82,14 @@ class WM_WS_E:
     def capturar_teclado(self):
         while self.running:
             try:
-                input() 
-                if self.estado == "OK":
-                    self.estado = "KO"
-                    print("\n[ENGINE] ¡Avería detectada!")
-                else:
-                    self.estado = "OK"
-                    print("\n[ENGINE] Avería reparada.")
+                entrada = input().strip().upper()
+                if entrada == "L":
+                    if self.estado == "OK":
+                        self.estado = "KO"
+                        print("\n[ENGINE] ¡Avería detectada!")
+                    else:
+                        self.estado = "OK"
+                        print("\n[ENGINE] Avería reparada.")
             except EOFError:
                 break
     
