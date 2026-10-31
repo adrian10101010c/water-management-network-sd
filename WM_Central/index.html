@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>WaterManagement - Panel Central</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 24px;
+        }
+        h1 {
+            color: #38bdf8;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+        .grid{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        .card{
+            background-color: #1e293b;
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 8px solid #64748b;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .station-id {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-AVAILABLE {
+            border-left-color: #22c55e;
+        }
+        .status-AVAILABLE .badge {
+            background-color: #22c55e;
+            color: #052e16;
+        }
+        .status-WATERING {
+            border-left-color: #22c55e;
+        }
+        .status-WATERING .badge {
+            background-color: #22c55e;
+            color: #052e16;
+            animation: blink 1s infinite alternate;
+        }
+        .status-LEAK {
+            border-left-color: #ef4444;
+        }
+        .status-LEAK .badge {
+            background-color: #ef4444;
+            color: #450a0a;
+        }
+        .status-OUT_OF_SERVICE {
+            border-left-color: #f97316;
+        }
+        .status-OUT_OF_SERVICE .badge {
+            background-color: #f97316;
+            color: #0f172a;
+        }
+        .status-DISCONNECTED {
+            border-left-color: #64748b;
+        }
+        .status-DISCONNECTED .badge {
+            background-color: #64748b;
+            color: #0f172a;
+        }
+        @keyframes blink {
+            from { opacity: 1;}
+            to { opacity: 0.3;}
+        }
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+        }
+        .value {
+            font-weight: bold;
+            color: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    
+</body>
+
+
+</html>
