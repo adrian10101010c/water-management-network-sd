@@ -6,6 +6,33 @@ import json
 import database
 import protocol
 from confluent_kafka import Producer, Consumer, KafkaException, KafkaError
+from flask import Flask, render_template, jsonify
+import logging
+
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+app = Flask(__name__)
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/stations')
+def get_stations():
+    estacionesBD = database.obtenerEstaciones()
+    estaciones = []
+    for ws in estacionesBD:
+        estaciones.append({
+            "id": ws[0],
+            "location": ws[1],
+            "status": ws[2],
+            "flow": ws[3],
+            "accumulated_volume": ws[4],
+            "operator": ws[5]
+        })
+    return jsonify(estaciones)
+
+def iniciar_servidor_web(puerto=8080):
+    app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader= False)
 
 class WM_Central:
     def __init__(self, socket_port, broker_address):

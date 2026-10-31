@@ -8,6 +8,7 @@ wm_central.py:
 - Cómo configuro los hilos para que el proceso no se quede bloqueado al cerrarlo con ctrl+C y finalice inmediatamente?
 - Una vez establecida una conexión por sockets, cómo hago para que el programa quede a la espera de recibir bytes?
 - Al reiniciar rápidamente tras pararlo, me sale el error "Address already in use". Que debo utilizar para que el puerto este disponible si reinicio rápido?
+- Como realizamos para conectar la información de wm_central a index.html
 
 wm_monitor.py:
 - Cómo establezco un timeout para un socket?
@@ -16,5 +17,9 @@ wm_engine.py:
 - Dónde debería crear el hilo para escuchar al monitor y para el teclado?
 - Debo envolver la entrada de teclado input() con try-except? Qué tipo de excepción?
 
-dockerfile:
+Dockerfile:
 - Cómo selecciono el directorio donde está el programa que debe ejecutarse en dockerfile?
+
+index.html:
+- Que paleta de colores piden en la práctica para usar en html en cada lugar
+- Que script debo utilizar para que aparezcan las estaciones
