@@ -12,6 +12,7 @@ class WM_FO:
         self.producer = None
         self.consumer = None
         self.estacion = None
+        self.evento_fin_riego = threading.Event()
 
     def iniciar(self):
         self.running = True
@@ -38,7 +39,8 @@ class WM_FO:
         if err is not None:
             print(f"Message delivery failed: {err}")
         else:
-            print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
+            pass
+            #print(f"Message delivered to {msg.topic()} [{msg.partition()}]")
 
     def escuchar_kafka(self):
         try:
@@ -60,12 +62,12 @@ class WM_FO:
                             estado = datos.get("status")
                             mensaje = datos.get("msg")
                             ws_id = datos.get("ws_id")
-                            print(f"\n>[RESPUESTA CENTRAL] {estado}: {mensaje} (Estación {ws_id}<")
+                            print(f"\n>[RESPUESTA CENTRAL] {estado}: {mensaje} (Estación {ws_id})<")
                             if estado == "APPROVED":
                                 self.estacion = ws_id
-                            else:
+                            elif estado in ["FINISHED", "DENIED"]:
                                 self.estacion = None
-                            self.imprimir_menu()
+                                self.evento_fin_riego.set()
                     elif topic == 'wm-telemetry':
                         if datos.get("operator_id") == self.operator_id and datos.get("ws_id") == self.estacion:
                             caudal = datos.get("flow")
@@ -85,11 +87,13 @@ class WM_FO:
                 self.imprimir_menu()
                 opcion = input().strip()
                 if opcion == "1":
-                    ws_id = input("Introduce el ID de la estación (ej. WS-01): ").strip()
-                    duracion_str = input("Introduce la duración en segundos: ").strip()
-                    if duracion_str.isdigit():
+                    ws_id = input("Introduce el ID de la estación (ej. WS-01): \n").strip()
+                    duracion_str = input("Introduce la duración en segundos: \n").strip()
+                    if duracion_str.isdigit() and int(duracion_str) > 0:
                         duracion = int(duracion_str)
                         self.solicitar_riego(ws_id, duracion)  
+                        self.evento_fin_riego.wait()
+                        time.sleep(0.5)
                     else:
                         print("Duración invalida. Debe ser un numero.")
                 elif opcion == "2":
