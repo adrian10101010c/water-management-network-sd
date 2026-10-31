@@ -18,6 +18,7 @@ wm_engine.py:
 - Debo envolver la entrada de teclado input() con try-except? Qué tipo de excepción?
 
 Dockerfile:
+- Cómo selecciono el directorio donde está el programa que debe ejecutarse en dockerfile?
 
 index.html:
 - Que paleta de colores piden en la práctica para usar en html en cada lugar
