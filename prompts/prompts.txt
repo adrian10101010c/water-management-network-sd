@@ -15,3 +15,6 @@ wm_monitor.py:
 wm_engine.py:
 - Dónde debería crear el hilo para escuchar al monitor y para el teclado?
 - Debo envolver la entrada de teclado input() con try-except? Qué tipo de excepción?
+
+dockerfile:
+- Cómo selecciono el directorio donde está el programa que debe ejecutarse en dockerfile?
