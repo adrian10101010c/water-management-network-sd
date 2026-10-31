@@ -50,6 +50,8 @@ class WM_Central:
         threading.Thread(target=self.escuchar_sockets, daemon=True).start()
         threading.Thread(target=self.consumir_peticiones, daemon=True).start()
         threading.Thread(target=self.consumir_telemetria, daemon=True).start()
+        threading.Thread(target=iniciar_servidor_web, args=(8080,), daemon=True).start()
+        print("[CENTRAL] Panel web de monitorización activo en http://localhost:8080")
         try:
             while self.running:
                 time.sleep(1)

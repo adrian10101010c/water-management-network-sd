@@ -34,11 +34,18 @@ class WM_WS_E:
         threading.Thread(target=self.bucle_telemetria, daemon=True).start()
         print(f"[ENGINE {self.ws_id}] Iniciado. Pulsa ENTER para alternar OK/KO")
         while self.running:
-            if self.conectar_monitor():
-                print(f"[ENGINE {self.ws_id}] Conectado al Monitor. Esperando chequeos de salud...")
-                self.escuchar_monitor()
-            else:
-                time.sleep(2)
+            try:
+                if self.conectar_monitor():
+                    print(f"[ENGINE {self.ws_id}] Conectado al Monitor. Esperando chequeos de salud...")
+                    self.escuchar_monitor()
+                else:
+                    time.sleep(2)
+            except KeyboardInterrupt:
+                print("[ENGINE] Apagando engine...")
+                self.running = False
+            except Exception as e:
+                print(f"[ENGINE] Se ha producido un error: {e}")
+                self.running = False
         
     def conectar_monitor(self):
         try:
