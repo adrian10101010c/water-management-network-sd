@@ -6,4 +6,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "wm_central.py"]
+CMD ["python", "wm_central.py", "8080", "localhost:9092"]
