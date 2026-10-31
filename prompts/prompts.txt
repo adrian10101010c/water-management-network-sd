@@ -17,6 +17,12 @@ wm_engine.py:
 - Dónde debería crear el hilo para escuchar al monitor y para el teclado?
 - Debo envolver la entrada de teclado input() con try-except? Qué tipo de excepción?
 
+<<<<<<< HEAD
+=======
+Dockerfile:
+- Cómo selecciono el directorio donde está el programa que debe ejecutarse en dockerfile?
+
+>>>>>>> 800fc5ac61ebfe05164b2c86e9e943143f38a20f
 index.html:
 - Que paleta de colores piden en la práctica para usar en html en cada lugar
 - Que script debo utilizar para que aparezcan las estaciones
