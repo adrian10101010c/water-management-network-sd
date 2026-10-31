@@ -100,7 +100,69 @@
     </style>
 </head>
 <body>
-    
+    <h1>WaterManagement - Panel de control</h1>
+    <div id="stations-grid" class="grid">
+
+    </div>
+    <script>
+        async function sendAction(wsId, action, duration = 60) {
+            try {
+                const res = await fetch('/api/action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ws_id: wsId, action: action, duration: duration })
+                });
+                const data = await res.json();
+                alert(data.msg);
+                fetchStations();
+            } catch (err) {
+                alert("Error al enviar la acción");
+            }
+        }
+        async function fetchStations() {
+            try {
+                const res = await fetch('/api/stations');
+                const data = await res.json();
+                const container = document.getElementById('stations-grid');
+                container.innerHTML = '';
+
+                data.forEach(ws => {
+                    const statusClass = `status-${ws.status}`;
+                    const statusLabel = ws.status === 'OUT_OF_SERVICE' ? 'OUT OF SERVICE' : ws.status;
+                    
+                    const card = document.createElement('div');
+                    card.className = `card ${statusClass}`;
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="station-id">${ws.id}</span>
+                            <span class="badge">${statusLabel}</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>Ubicación:</span>
+                            <span class="value">${ws.location}</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>Caudal:</span>
+                            <span class="value">${ws.flow} L/min</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>Volumen acumulado:</span>
+                            <span class="value">${ws.accumulated_volume} L</span>
+                        </div>
+                        <div class="telemetry-row">
+                            <span>Operario:</span>
+                            <span class="value">${ws.operator ? ws.operator : 'Ninguno'}</span>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Error al actualizar panel:", err);
+            }
+        }
+        setInterval(fetchStations, 1000);
+        fetchStations();
+    </script>
 </body>
 
 
