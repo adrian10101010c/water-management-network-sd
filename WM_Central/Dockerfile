@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app/WM_Central
+WORKDIR /app
 
 RUN pip install --no-cache-dir confluent-kafka flask
 
@@ -19,4 +19,4 @@ ENV BROKER_ADDRESS=broker:29092
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["sh", "-c", "python wm_central.py $SOCKET_PORT $BROKER_ADDRESS"]
+CMD ["sh", "-c", "python WM_Central/wm_central.py $SOCKET_PORT $BROKER_ADDRESS"]
