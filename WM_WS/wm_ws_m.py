@@ -13,7 +13,8 @@ class WM_WS_M:
         self.central_socket = None
         self.running = False
         self.server_socket = None
-        self.estado_anterior = "OK"
+        self.estado_anterior = "KO"      
+        self.engine_conectado = False    
 
     def iniciar(self):
         self.running = True
@@ -31,7 +32,6 @@ class WM_WS_M:
                 self.server_socket.close()
             if self.central_socket:
                 self.central_socket.close()
-    
 
     def mantener_conexion_central(self):
         while self.running:
@@ -43,13 +43,16 @@ class WM_WS_M:
                     msg = f"REG#{self.ws_id}#{self.location}"
                     if self.enviar_a_central(msg):
                         print(f"[MONITOR] Registrado con éxito en CENTRAL {self.central_address}")
-                        #if self.estado_anterior == "KO":
-                            #self.enviar_a_central(f"LEAK#{self.ws_id}")
+                        
+                        if not self.engine_conectado:
+                            time.sleep(0.1) 
+                            print(f"[MONITOR] Engine no detectado al arrancar. Notificando LEAK a CENTRAL...")
+                            self.enviar_a_central(f"LEAK#{self.ws_id}")
                     else:
                         self.central_socket.close()
                         self.central_socket = None
                 except (ConnectionRefusedError, socket.error):
-                    print(f"[MONITOR {self.ws_id}] Imposible conectar con WM_Central en {self.central_address}. Reintentando en 3s...")
+                    print(f"[MONITOR {self.ws_id}] Imposible conectar con WM_Central en {self.central_address}. Reintentando en 5s...")
                     self.central_socket = None
                     time.sleep(5)
             else:
@@ -65,7 +68,6 @@ class WM_WS_M:
                 print("[MONITOR] CENTRAL rechazó el mensaje.")
                 return False
 
-            
             if datos.startswith(protocol.ACK):
                 datos = datos[1:]
 
@@ -78,27 +80,28 @@ class WM_WS_M:
                 print(f"[MONITOR] Respuesta de CENTRAL: {respuesta}")
 
             return True
-        
+
         except Exception as e:
             print(f"[MONITOR] Error comunicando con CENTRAL: {e}")
             return False
 
     def escuchar_sockets_engine(self):
-            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server_socket.bind(('', self.engine_port))
-            self.server_socket.listen(20)
-            print(f"[MONITOR] Escuchando conexiones en el puerto {self.engine_port}...")
-            while self.running:
-                try:
-                    client_socket, addr = self.server_socket.accept()
-                    print(f"[MONITOR] Conexión entrante desde {addr}")
-                    self.manejar_engine(client_socket, addr)
-                except Exception as e:
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.bind(('', self.engine_port))
+        self.server_socket.listen(20)
+        print(f"[MONITOR] Escuchando conexiones del Engine en el puerto {self.engine_port}...")
+        while self.running:
+            try:
+                client_socket, addr = self.server_socket.accept()
+                print(f"[MONITOR] Engine conectado desde {addr}")
+                self.manejar_engine(client_socket, addr)
+            except Exception as e:
+                if self.running:
                     print(f"[MONITOR] Error al aceptar conexión: {e}")
-                
+
     def manejar_engine(self, client_socket, addr):
-        client_socket.settimeout(1.0)
+        client_socket.settimeout(2.0)
         try:
             while self.running:
                 msg = protocol.empaquetarCadena("CHECK_HEALTH")
@@ -107,58 +110,59 @@ class WM_WS_M:
                 try:
                     datos = client_socket.recv(1024)
                 except socket.timeout:
-                    print(f"[MONITOR] Timeout esperando al engine {addr}.")
-                    break
+                    continue
 
                 if not datos:
                     print(f"[MONITOR] El engine {addr} se ha desconectado.")
                     break
-        
+
                 respuesta = protocol.extraerMensaje(datos)
                 if respuesta is None:
-                    print(f"[MONITOR] Mensaje corrupto (LRC inválido) desde {addr}. Enviando NACK.")
                     client_socket.sendall(protocol.NACK)
                     continue
 
-                if respuesta == "KO" and self.estado_anterior != "KO":
-                    print("[MONITOR] Avería (KO) detectada. Notificando a CENTRAL...")
+              
+                if respuesta == "OK" and self.estado_anterior != "OK":
+                    print(f"[MONITOR] Engine en {addr} funcionando correctamente (OK). Notificando AVAILABLE a CENTRAL...")
+                    self.enviar_a_central(f"OK#{self.ws_id}")
+                    self.estado_anterior = "OK"
+                    self.engine_conectado = True
+
+                
+                elif respuesta == "KO" and self.estado_anterior != "KO":
+                    print(f"[MONITOR] Avería (KO) detectada en {addr}. Notificando LEAK a CENTRAL...")
                     self.enviar_a_central(f"LEAK#{self.ws_id}")
                     self.estado_anterior = "KO"
-                elif respuesta == "OK" and self.estado_anterior == "KO":
-                    print("[MONITOR] Avería resuelta. Notificando a CENTRAL...")
-                    self.enviar_a_central(f"OK#{self.ws_id}")
-                    self.estado_anterior = "OK"              
-        
+
                 time.sleep(1)
-        
+
         except ConnectionResetError:
             print(f"[MONITOR] Conexión perdida con {addr}.")
         except Exception as e:
             print(f"[MONITOR] Error con el engine {addr}: {e}")
         finally:
             client_socket.close()
-            print("[MONITOR] Conexión cerrada. Notificando fuga a CENTRAL...")
-            self.enviar_a_central(f"LEAK#{self.ws_id}")
+            self.engine_conectado = False
             self.estado_anterior = "KO"
-    
+            print(f"[MONITOR] Engine en {addr} desconectado. Notificando LEAK a CENTRAL...")
+            if self.central_socket:
+                self.enviar_a_central(f"LEAK#{self.ws_id}")
+
 def main():
-    if (len(sys.argv) == 5):
+    if len(sys.argv) == 5:
         engine_port = int(sys.argv[1])
         central_address = sys.argv[2]
         ws_id = sys.argv[3]
 
         central_ip, central_port = central_address.split(":")
-        central_port = int(central_port)
-        central_address = (central_ip, central_port)
-
+        central_address = (central_ip, int(central_port))
         location = sys.argv[4]
-        
+
         monitor = WM_WS_M(engine_port, central_address, ws_id, location)
         monitor.iniciar()
-
     else:
         print("Uso: python wm_ws_m.py <puerto_engine> <ip:puerto_central> <ws_id> <location>")
         sys.exit(1)
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
