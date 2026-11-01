@@ -60,14 +60,21 @@ class WM_FO:
                     if topic == 'wm-responses':
                         if datos.get("operator_id") == self.operator_id:
                             estado = datos.get("status")
-                            mensaje = datos.get("msg")
-                            ws_id = datos.get("ws_id")
-                            print(f"\n>[RESPUESTA CENTRAL] {estado}: {mensaje} (Estación {ws_id})<")
-                            if estado == "APPROVED":
-                                self.estacion = ws_id
-                            elif estado in ["FINISHED", "DENIED"]:
-                                self.estacion = None
+                            if estado == "LIST":
+                                print("\n--- Estaciones disponibles ---")
+                                for st in datos.get("data", []):
+                                    print(f"ID: {st['id']} | Ubicación: {st['location']} | Estado: {st['status']}")
+                                print("------------------------------")
                                 self.evento_fin_riego.set()
+                            else:
+                                mensaje = datos.get("msg")
+                                ws_id = datos.get("ws_id")
+                                print(f"\n>[RESPUESTA CENTRAL] {estado}: {mensaje} (Estación {ws_id})<")
+                                if estado == "APPROVED":
+                                    self.estacion = ws_id
+                                elif estado in ["FINISHED", "DENIED"]:
+                                    self.estacion = None
+                                    self.evento_fin_riego.set()
                     elif topic == 'wm-telemetry':
                         if datos.get("operator_id") == self.operator_id and datos.get("ws_id") == self.estacion:
                             caudal = datos.get("flow")
@@ -78,7 +85,7 @@ class WM_FO:
                 self.consumer.close()
 
     def imprimir_menu(self):
-        print("\nElige una opción (1. Regar | 2. Salir): ")
+        print("\nElige una opción (1. Regar | 2. Listar estaciones | 3. Salir): ")
 
     def mostrar_menu(self):
         time.sleep(1)
@@ -88,15 +95,18 @@ class WM_FO:
                 opcion = input().strip()
                 if opcion == "1":
                     ws_id = input("Introduce el ID de la estación (ej. WS-01): \n").strip()
+                    caudal_str = input("Introduce el caudal deseado en L/min (ej. 10.0): \n").strip()
                     duracion_str = input("Introduce la duración en segundos: \n").strip()
-                    if duracion_str.isdigit() and int(duracion_str) > 0:
-                        duracion = int(duracion_str)
-                        self.solicitar_riego(ws_id, duracion)  
+                    if duracion_str.isdigit() and int(duracion_str) > 0 and caudal_str.replace('.', '', 1).isdigit() and float(caudal_str) > 0:
+                        self.solicitar_riego(ws_id, int(duracion_str), float(caudal_str))  
                         self.evento_fin_riego.wait()
+                        self.evento_fin_riego.clear()
                         time.sleep(0.5)
                     else:
-                        print("Duración invalida. Debe ser un numero.")
+                        print("Duración o caudal inválidos. Deben ser números positivos.")
                 elif opcion == "2":
+                    self.listar_estaciones()
+                elif opcion == "3":
                     print("Saliendo de la aplicación...")
                     self.running = False
                 else:
@@ -108,15 +118,22 @@ class WM_FO:
         if self.producer:
             self.producer.flush()
 
-    def solicitar_riego(self, ws_id: str, duracion: int):
+    def solicitar_riego(self, ws_id: str, duracion: int, caudal: float):
         peticion = {
             "operator_id": self.operator_id,
             "ws_id": ws_id,
-            "duration": duracion
+            "duration": duracion,
+            "flow": caudal
         }
         self.producer.produce('wm-requests', value=json.dumps(peticion).encode('utf-8'), callback=self.delivery_report)
         self.producer.flush()
         print(f"[OPERARIO] Petición enviada a Central. Esperando validación...")
+
+    def listar_estaciones(self):
+        peticion = {"action": "LIST", "operator_id": self.operator_id}
+        self.producer.produce('wm-requests', value=json.dumps(peticion).encode('utf-8'), callback=self.delivery_report)
+        self.producer.flush()
+        print(f"[OPERARIO] Solicitud de listado de estaciones enviada a Central.")
 
 def main():
     if (len(sys.argv) != 3):
