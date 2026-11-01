@@ -133,6 +133,10 @@ class WM_WS_E:
                         pass
                     elif orden == "ACTIVATE":
                         print(f"[ENGINE {self.ws_id}] Estación reactivada por Central.")
+                    elif orden == "SET_FLOW":
+                        if datos.get("flow") is not None:
+                            self.flow_minutos = float(datos.get("flow"))
+                            print(f"[ENGINE {self.ws_id}] Caudal ajustado a {self.flow_minutos} L/min por orden remota.")
         finally:
             consumer.close()
 

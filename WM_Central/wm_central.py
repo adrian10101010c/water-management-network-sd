@@ -6,9 +6,10 @@ import json
 import database
 import protocol
 from confluent_kafka import Producer, Consumer, KafkaException, KafkaError
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import logging
 
+central_instance = None
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 app = Flask(__name__)
@@ -30,6 +31,29 @@ def get_stations():
             "operator": ws[5]
         })
     return jsonify(estaciones)
+
+@app.route('/api/action', methods=['POST'])
+def handle_action():
+    datos = request.json
+    ws_id = datos.get("ws_id")
+    action = datos.get("action")
+    if action == "START":
+        duracion = int(datos.get("duration", 60))
+        central_instance.forzar_inicio_riego(ws_id, "WEB_ADMIN", duracion)
+        msg = f"Riego iniciado en {ws_id} por {duracion} segundos."
+    elif action == "STOP":
+        central_instance.forzar_bloqueo_estacion(ws_id)
+        msg = f"Riego detenido y estación {ws_id} bloqueada."
+    elif action == "ACTIVATE":
+        central_instance.forzar_activación_estacion(ws_id)
+        msg = f"Estación {ws_id} activada."
+    elif action == "SET_FLOW":
+        flowNuevo = float(datos.get("flow", 10.0))
+        central_instance.enviar_orden_a_estacion(ws_id, "SET_FLOW", flow=flowNuevo)
+        msg = f"Orden enviada: Caudal ajustado en {ws_id} a {flowNuevo} L/min."
+    else:
+        return jsonify({"msg": "Acción desconocida"}), 400
+    return jsonify({"msg": msg})
 
 def iniciar_servidor_web(puerto=8080):
     app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader= False)
@@ -185,7 +209,12 @@ class WM_Central:
                         volumen = datos.get("accumulated_volume", 0)
                         reason = datos.get("reason", "COMPLETED")
 
-                        database.finalizarRiegoEstacion(ws_id) 
+                        estacion = database.obtenerEstacion(ws_id)
+                        estado_actual = estacion[2] if estacion else "AVAILABLE"
+                        if estado_actual != "OUT_OF_SERVICE":
+                            database.finalizarRiegoEstacion(ws_id) 
+                        else: 
+                            database.finalizarRiegoEstacion(ws_id, status="OUT_OF_SERVICE")
 
                         if reason == "LEAK":
                             msg_fo = f"ALERTA: Riego ABORTADO por fuga en la estación {ws_id}. Volumen: {volumen}L"
@@ -273,18 +302,43 @@ class WM_Central:
             print(f"[CENTRAL -> KAFKA] Orden enviada a {ws_id}: {orden}")
 
     def forzar_inicio_riego(self, ws_id: str, operator_id: str, duracion: int = 60):
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            return f"Error: Estación {ws_id} no encontrada."
+        estado_actual = estacion[2]
+        if estado_actual != "AVAILABLE":
+            print(f"[CENTRAL] Ignorado: Intento de regar {ws_id} desde {estado_actual}.")
+            return f"Acción denegada: La estación '{ws_id}' no está disponible. Estado actual: {estado_actual}"
         print(f"[CENTRAL] Orden administrativa: Forzar inicio de riego en {ws_id}")
         self.manejar_peticion_riego("CENTRAL_ADMIN", ws_id, duracion)
 
     def forzar_bloqueo_estacion(self, ws_id: str):
-        database.finalizarRiegoEstacion(ws_id, status="OUT_OF_SERVICE")
-        print(f"[CENTRAL] Estación {ws_id} bloqueada (Estado -> 'OUT_OF_SERVICE'.)")
-        self.enviar_orden_a_estacion(ws_id, "STOP")
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            return f"Error: Estación {ws_id} no encontrada."
+        estado_actual = estacion[2]
+        if estado_actual in ["AVAILABLE", "WATERING", "LEAK"]:
+            database.finalizarRiegoEstacion(ws_id, status="OUT_OF_SERVICE")
+            print(f"[CENTRAL] Estación {ws_id} bloqueada (Estado -> 'OUT_OF_SERVICE').")
+            self.enviar_orden_a_estacion(ws_id, "STOP")
+            return f"Estación {ws_id} bloqueada correctamente."
+        else:
+            print(f"[CENTRAL] Ignorado: Intento de bloquear {ws_id} desde {estado_actual}.")
+            return f"Acción denegada: La estación ya está {estado_actual}."
 
     def forzar_activación_estacion(self, ws_id: str):
-        database.actualizarEstado(ws_id, "AVAILABLE")
-        print(f"[CENTRAL] Estación {ws_id} reactivada (Estado -> 'AVAILABLE')")
-        self.enviar_orden_a_estacion(ws_id, "ACTIVATE")
+        estacion = database.obtenerEstacion(ws_id)
+        if not estacion:
+            return f"Error: Estación {ws_id} no encontrada."
+        estado_actual = estacion[2]
+        if estado_actual == "OUT_OF_SERVICE":
+            database.actualizarEstado(ws_id, "AVAILABLE")
+            print(f"[CENTRAL] Estación {ws_id} reactivada (Estado -> 'AVAILABLE').")
+            self.enviar_orden_a_estacion(ws_id, "ACTIVATE")
+            return f"Estación {ws_id} activada correctamente."
+        else:
+            print(f"[CENTRAL] Ignorado: Intento de activar {ws_id} desde {estado_actual}.")
+            return f"Acción denegada: Solo se puede activar desde OUT_OF_SERVICE."
 
 def main():
         if len(sys.argv) < 3:
@@ -295,6 +349,8 @@ def main():
         broker_address = sys.argv[2]
 
         central = WM_Central(socket_port, broker_address)
+        global central_instance
+        central_instance = central 
         central.iniciar()
 
 if __name__ == "__main__":
