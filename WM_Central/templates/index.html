@@ -105,12 +105,15 @@
 
     </div>
     <script>
-        async function sendAction(wsId, action, duration = 60) {
+        async function sendAction(wsId, action, value = null) {
             try {
+                let bodyData = { ws_id: wsId, action: action };
+                if (action === 'START') bodyData.duration = parseInt(value) || 60;
+                if (action === 'SET_FLOW') bodyData.flow = parseFloat(value) || 10.0;
                 const res = await fetch('/api/action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ws_id: wsId, action: action, duration: duration })
+                    body: JSON.stringify(bodyData)
                 });
                 const data = await res.json();
                 alert(data.msg);
@@ -138,20 +141,27 @@
                             <span class="badge">${statusLabel}</span>
                         </div>
                         <div class="telemetry-row">
-                            <span>Ubicación:</span>
-                            <span class="value">${ws.location}</span>
+                            <span>Ubicación:</span><span class="value">${ws.location}</span>
                         </div>
                         <div class="telemetry-row">
-                            <span>Caudal:</span>
-                            <span class="value">${ws.flow} L/min</span>
+                            <span>Caudal:</span><span class="value">${ws.flow} L/min</span>
                         </div>
                         <div class="telemetry-row">
-                            <span>Volumen acumulado:</span>
-                            <span class="value">${ws.accumulated_volume} L</span>
+                            <span>Total acumulado:</span><span class="value">${ws.accumulated_volume} L</span>
                         </div>
                         <div class="telemetry-row">
-                            <span>Operario:</span>
-                            <span class="value">${ws.operator ? ws.operator : 'Ninguno'}</span>
+                            <span>Operario:</span><span class="value">${ws.operator ? ws.operator : 'Ninguno'}</span>
+                        </div>
+                        <hr style="border-color: #334155; margin: 12px 0;">
+                        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                            <input type="number" id="dur-${ws.id}" value="10" min="1" style="width: 50px; background: #334155; color: white; border: none; border-radius: 4px; padding: 4px;">
+                            <button onclick="sendAction('${ws.id}', 'START', document.getElementById('dur-${ws.id}').value)" style="background: #22c55e; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; flex-grow: 1;">Regar (s)</button>
+                            <button onclick="sendAction('${ws.id}', 'STOP')" style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer;">Bloquear</button>
+                            <button onclick="sendAction('${ws.id}', 'ACTIVATE')" style="background: #38bdf8; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer;">Activar</button>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="number" id="flow-${ws.id}" value="5" min="1" step="0.5" style="width: 50px; background: #334155; color: white; border: none; border-radius: 4px; padding: 4px;">
+                            <button onclick="sendAction('${ws.id}', 'SET_FLOW', document.getElementById('flow-${ws.id}').value)" style="background: #a855f7; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; flex-grow: 1;">Fijar Caudal (L/min)</button>
                         </div>
                     `;
                     container.appendChild(card);
