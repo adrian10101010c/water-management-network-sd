@@ -202,9 +202,17 @@ class WM_Central:
                     
                     if accion == "REQUEST":
                         duracion = datos.get("duration", 60)
-                        print(f"\n[CENTRAL] Petición recibida: {operator_id} -> {ws_id} ({duracion}s)")
-                        self.manejar_peticion_riego(operator_id, ws_id, duracion)
-                        
+                        caudal = datos.get("flow", 10.0)
+                        print(f"\n[CENTRAL] Petición recibida: {operator_id} -> {ws_id} ({duracion}s, {caudal} L/min)")
+                        self.manejar_peticion_riego(operator_id, ws_id, duracion, caudal)
+                    elif accion == "LIST":
+                        estacionesBD = database.obtenerEstaciones()
+                        lista = [{"id": ws[0], "location": ws[1], "status": ws[2]} for ws in estacionesBD]
+                        resumen = {"operator_id": operator_id, "status": "LIST", "data": lista}
+                        if self.producer:
+                            self.producer.produce('wm-responses', value=json.dumps(resumen).encode('utf-8'), callback=self.delivery_report)
+                            self.producer.poll(0)
+                            print(f"\n[CENTRAL] Listado de estaciones enviado a {operator_id}")
                     elif accion == "STOP":
                         volumen = datos.get("accumulated_volume", 0)
                         reason = datos.get("reason", "COMPLETED")
@@ -269,7 +277,7 @@ class WM_Central:
         print(f"[CENTRAL] Estación '{ws_id}' ({location}) registrada y disponible.")
         return f"REG_OK{protocol.SEP}{ws_id}"
 
-    def manejar_peticion_riego(self, operator_id: str, ws_id: str, duracion: int):
+    def manejar_peticion_riego(self, operator_id: str, ws_id: str, duracion: int, caudal: float = 10.0):
         estacion = database.obtenerEstacion(ws_id)
         respuesta_fo = {"operator_id": operator_id, "ws_id": ws_id, "status": "DENIED", "msg": ""}
         if not estacion:
@@ -281,11 +289,11 @@ class WM_Central:
                 motivo = f"La estación '{ws_id}' no está disponible. Estado actual: {estado_actual}"
                 respuesta_fo["msg"] = motivo
             else:
-                database.iniciarRiegoEstacion(ws_id, operator_id)
+                database.iniciarRiegoEstacion(ws_id, operator_id, initial_flow=caudal)
                 respuesta_fo["status"] = "APPROVED"
                 motivo = f"Riego autorizado para {operator_id} en {ws_id} durante {duracion} segundos."
                 respuesta_fo["msg"] = motivo
-                self.enviar_orden_a_estacion(ws_id, "START", duration=duracion, operator_id=operator_id)
+                self.enviar_orden_a_estacion(ws_id, "START", duration=duracion, operator_id=operator_id, flow=caudal)
 
         print(f"[CENTRAL -> FO] Respuesta a {operator_id}: {respuesta_fo['status']} - {respuesta_fo['msg']}")
 
@@ -301,16 +309,9 @@ class WM_Central:
             self.producer.poll(0)
             print(f"[CENTRAL -> KAFKA] Orden enviada a {ws_id}: {orden}")
 
-    def forzar_inicio_riego(self, ws_id: str, operator_id: str, duracion: int = 60):
-        estacion = database.obtenerEstacion(ws_id)
-        if not estacion:
-            return f"Error: Estación {ws_id} no encontrada."
-        estado_actual = estacion[2]
-        if estado_actual != "AVAILABLE":
-            print(f"[CENTRAL] Ignorado: Intento de regar {ws_id} desde {estado_actual}.")
-            return f"Acción denegada: La estación '{ws_id}' no está disponible. Estado actual: {estado_actual}"
+    def forzar_inicio_riego(self, ws_id: str, operator_id: str, duracion: int = 60, caudal: float = 10.0):
         print(f"[CENTRAL] Orden administrativa: Forzar inicio de riego en {ws_id}")
-        self.manejar_peticion_riego("CENTRAL_ADMIN", ws_id, duracion)
+        self.manejar_peticion_riego("CENTRAL_ADMIN", ws_id, duracion, caudal)
 
     def forzar_bloqueo_estacion(self, ws_id: str):
         estacion = database.obtenerEstacion(ws_id)

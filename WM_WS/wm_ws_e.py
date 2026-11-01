@@ -125,7 +125,9 @@ class WM_WS_E:
                         self.is_watering = True
                         self.operator = datos.get("operator_id")
                         duracion = datos.get("duration", 60)
-                        print(f"[ENGINE {self.ws_id}] Abriendo válvula. Riego iniciado por {duracion} segundos.")
+                        if datos.get("flow") is not None:
+                            self.flow_minutos = float(datos.get("flow"))
+                        print(f"[ENGINE {self.ws_id}] Abriendo válvula. Riego iniciado por {duracion} segundos a {self.flow_minutos} L/min.")
                 
                         threading.Thread(target=self.temporizador_riego, args=(duracion,), daemon=True).start()
                     elif orden == "STOP":
