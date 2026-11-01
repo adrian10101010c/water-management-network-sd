@@ -26,4 +26,4 @@ index.html:
 
 Extras:
 - Porque no se abre la web si deberia estar conectada a docker
-- 
+- Como puedo hacer para agregar varios botones funcionales para poder regar, bloquear la estacion, quitar el bloqueo de la estación y cambiar el caudal. Que no se puedan activar cuando esta en modo desconectado ni en leak
